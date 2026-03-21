@@ -553,11 +553,11 @@ strong {
 .hero-tagline {
     display: inline-block;
     font-family: var(--font-heading);
-    font-size: 28px;
-    font-weight: 700;
-    text-transform: none;
-    letter-spacing: 0.02em;
-    color: var(--color-white);
+    font-size: 24px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-gold);
     margin-bottom: var(--spacing-md);
 }
 
