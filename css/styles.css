@@ -546,6 +546,8 @@ strong {
 .hero-content {
     position: relative;
     max-width: 720px;
+    margin: 0 auto;
+    text-align: center;
 }
 
 .hero-tagline {
@@ -578,6 +580,7 @@ strong {
     display: flex;
     gap: var(--spacing-sm);
     flex-wrap: wrap;
+    justify-content: center;
 }
 
 /* ============================================
