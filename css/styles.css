@@ -774,8 +774,8 @@ strong {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: var(--spacing-xl);
-    flex-wrap: wrap;
+    gap: var(--spacing-md) var(--spacing-xl);
+    flex-wrap: nowrap;
 }
 
 .credential-item {
@@ -1478,6 +1478,7 @@ strong {
     }
 
     .credentials-list {
+        flex-wrap: wrap;
         gap: var(--spacing-lg);
     }
 
