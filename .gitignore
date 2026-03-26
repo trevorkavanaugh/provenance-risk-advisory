@@ -1,0 +1,7 @@
+
+# Sensitive/confidential documents - never push to remote
+LLC/assets/Reference_Only/Confidential/
+LLC/assets/last_batch_unorganized/
+LLC/assets/archive/originals/
+LLC/assets/Python_Tools/ap_reconciliation/data/
+*.mp4
