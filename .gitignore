@@ -5,3 +5,8 @@ LLC/assets/last_batch_unorganized/
 LLC/assets/archive/originals/
 LLC/assets/Python_Tools/ap_reconciliation/data/
 *.mp4
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
