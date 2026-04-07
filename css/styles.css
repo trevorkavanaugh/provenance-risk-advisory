@@ -764,6 +764,34 @@ strong {
     color: var(--color-gold);
 }
 
+.service-card--featured {
+    grid-column: 1 / -1;
+    max-width: 580px;
+    margin: 0 auto;
+}
+
+.services-entry-point {
+    text-align: center;
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--color-border-light);
+}
+
+.services-entry-point p {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.services-entry-point a {
+    color: var(--color-gold);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.services-entry-point a:hover {
+    text-decoration: underline;
+}
+
 /* ============================================
    Credentials Bar
    ============================================ */
