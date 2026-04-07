@@ -1098,6 +1098,45 @@ strong {
     border-radius: var(--radius-sm);
 }
 
+/* Quick-Win / Targeted Engagements */
+.service-detail--alt-bg {
+    background: var(--color-off-white);
+}
+
+.quick-win-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: var(--spacing-lg);
+}
+
+.quick-win-card {
+    padding: var(--spacing-md);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-white);
+}
+
+.quick-win-card h3 {
+    font-size: 1.1rem;
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--color-text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.quick-win-card p {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.quick-win-card .quick-win-timeline {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-navy);
+}
+
 /* ============================================
    About Page
    ============================================ */
