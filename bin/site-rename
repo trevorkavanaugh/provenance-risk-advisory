@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+"""
+site-rename - rename a label or phrase across all HTML files in a site project.
+
+Catches cases like 'Mission & Board' getting renamed to 'Leadership' where the rename
+has to fan out across nav, alt text, link labels, footer items, H2/H3 headings, meta
+descriptions. Today this is grep + multi-file edits, error-prone.
+
+Default behavior:
+- Word-boundary matching (so 'Mission' doesn't catch 'missionary')
+- Case-sensitive
+- Glob: **/*.html (relative to cwd)
+- Skips text inside <script>, <style>, and URL-bearing attributes (href, src)
+- Applies to: prose text, common safe attributes (alt, title, aria-label, content)
+- Default mode is dry-run; use --apply to write
+
+Usage:
+  site-rename "<old text>" "<new text>" [options]
+
+Options:
+  --glob PATTERN        File glob (default: **/*.html)
+  --case-insensitive    Match case-insensitively
+  --no-word-boundary    Allow matches inside larger words
+  --apply               Actually write changes (default is dry-run preview)
+  --root PATH           Root directory (default: cwd)
+"""
+
+import argparse
+import difflib
+import re
+import sys
+from pathlib import Path
+
+# Pattern: match a content region we should NOT modify (script/style blocks and URL attrs).
+# We'll find all such regions, then substitute only outside them.
+SCRIPT_STYLE_BLOCK = re.compile(
+    r"<(script|style)\b[^>]*>.*?</\1>",
+    re.IGNORECASE | re.DOTALL,
+)
+URL_ATTR = re.compile(
+    r'\b(href|src|action|formaction|cite|data|poster|background)\s*=\s*"[^"]*"',
+    re.IGNORECASE,
+)
+
+
+def make_pattern(old: str, *, case_insensitive: bool, word_boundary: bool) -> re.Pattern:
+    flags = re.IGNORECASE if case_insensitive else 0
+    escaped = re.escape(old)
+    if word_boundary:
+        # Anchor at non-word/word boundaries on each side. Works for multi-word phrases too,
+        # since \b checks the transitions at the literal start and end of the pattern.
+        if old and old[0].isalnum():
+            escaped = r"\b" + escaped
+        if old and old[-1].isalnum():
+            escaped = escaped + r"\b"
+    return re.compile(escaped, flags)
+
+
+def make_skip_intervals(text: str) -> list[tuple[int, int]]:
+    """Return [(start, end), ...] byte ranges that should be excluded from replacement."""
+    intervals = []
+    for m in SCRIPT_STYLE_BLOCK.finditer(text):
+        intervals.append((m.start(), m.end()))
+    for m in URL_ATTR.finditer(text):
+        intervals.append((m.start(), m.end()))
+    intervals.sort()
+    # Merge overlaps for safety
+    merged = []
+    for s, e in intervals:
+        if merged and s <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], e))
+        else:
+            merged.append((s, e))
+    return merged
+
+
+def apply_rename(text: str, pattern: re.Pattern, new: str) -> tuple[str, int]:
+    """Substitute pattern with new in text, but skip script/style blocks and URL attrs.
+    Returns (new_text, replacement_count)."""
+    skip = make_skip_intervals(text)
+    out_parts = []
+    last = 0
+    count = 0
+
+    def in_skip(pos: int) -> bool:
+        for s, e in skip:
+            if s <= pos < e:
+                return True
+            if pos < s:
+                return False
+        return False
+
+    # Walk matches, replace only those not in a skip range
+    for m in pattern.finditer(text):
+        if in_skip(m.start()):
+            continue
+        out_parts.append(text[last : m.start()])
+        out_parts.append(new)
+        last = m.end()
+        count += 1
+    out_parts.append(text[last:])
+    return ("".join(out_parts), count)
+
+
+def render_diff(path: Path, before: str, after: str) -> str:
+    diff = difflib.unified_diff(
+        before.splitlines(keepends=True),
+        after.splitlines(keepends=True),
+        fromfile=f"{path} (before)",
+        tofile=f"{path} (after)",
+        n=2,
+    )
+    return "".join(diff)
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(
+        prog="site-rename",
+        description="Rename a label or phrase across all HTML files in a site project",
+    )
+    ap.add_argument("old", help="Text to find")
+    ap.add_argument("new", help="Replacement text")
+    ap.add_argument("--glob", default="**/*.html", help="File glob (default: **/*.html)")
+    ap.add_argument("--case-insensitive", action="store_true")
+    ap.add_argument("--no-word-boundary", action="store_true",
+                    help="Allow matches inside larger words")
+    ap.add_argument("--apply", action="store_true",
+                    help="Write changes (default is dry-run preview)")
+    ap.add_argument("--root", default=".", help="Root directory (default: cwd)")
+    args = ap.parse_args()
+
+    root = Path(args.root).expanduser().resolve()
+    if not root.exists():
+        print(f"error: root does not exist: {root}", file=sys.stderr)
+        return 2
+
+    pattern = make_pattern(
+        args.old,
+        case_insensitive=args.case_insensitive,
+        word_boundary=not args.no_word_boundary,
+    )
+
+    files = sorted(root.glob(args.glob))
+    if not files:
+        print(f"error: no files match {args.glob} under {root}", file=sys.stderr)
+        return 2
+
+    total_replacements = 0
+    files_changed = 0
+    for f in files:
+        if not f.is_file():
+            continue
+        try:
+            before = f.read_text(encoding="utf-8")
+        except Exception as e:
+            print(f"warning: skipping {f}: {e}", file=sys.stderr)
+            continue
+        after, count = apply_rename(before, pattern, args.new)
+        if count == 0:
+            continue
+        total_replacements += count
+        files_changed += 1
+        rel = f.relative_to(root) if str(f).startswith(str(root)) else f
+        if args.apply:
+            f.write_text(after, encoding="utf-8")
+            print(f"updated {rel}: {count} replacement(s)")
+        else:
+            print(f"\n=== {rel}: {count} replacement(s) ===")
+            print(render_diff(f, before, after))
+
+    print(
+        f"\n{'APPLIED' if args.apply else 'DRY-RUN'}: "
+        f"{total_replacements} replacement(s) across {files_changed} file(s)"
+    )
+    if not args.apply and total_replacements > 0:
+        print("Re-run with --apply to write the changes.")
+    return 0 if total_replacements > 0 else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
